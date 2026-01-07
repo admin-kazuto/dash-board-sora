@@ -1,13 +1,12 @@
 # Hướng dẫn Tích hợp License Hệ thống (Veo 3 & Sora)
 
-Tài liệu này hướng dẫn cách kết nối ứng dụng của bạn (Python) với hệ thống quản lý License Dashboard.
+Tài liệu này cung cấp hướng dẫn tối ưu để kết nối ứng dụng Python của bạn với License Dashboard.
 
-## 🚀 Thông tin API mới nhất
-Để tránh lỗi **405 (Method Not Allowed)**, vui lòng sử dụng endpoint đã được tối ưu hóa sau:
+## 🚀 Thông tin API Chính thức
+Cấu trúc API đã được tối ưu hóa để đảm bảo tốc độ và tính ổn định trên môi trường Vercel.
 
-- **Endpoint chính**: `https://dash-board-sora.vercel.app/api/license-check`
-- **Endpoint dự phòng**: `https://dash-board-sora.vercel.app/api/check` (Dùng nếu cái trên lỗi 405)
-- **Method**: `POST`
+- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
+- **Phương thức**: `POST`
 - **Định dạng dữ liệu**: `JSON`
 
 ---
@@ -16,18 +15,15 @@ Tài liệu này hướng dẫn cách kết nối ứng dụng của bạn (Pyth
 
 | Trường | Kiểu | Mô tả |
 | :--- | :--- | :--- |
-| `license_key` | String | Key người dùng nhập (VD: `VEO-XXXX-XXXX` hoặc `SORA-XXXX-XXXX`) |
-| `device_id` | String | ID định danh máy tính (Dùng địa chỉ MAC hoặc UUID) |
+| `license_key` | String | Chìa khóa do Admin cấp (VD: `VEO-XXXX-XXXX`) |
+| `device_id` | String | ID định danh máy tính (Khuyên dùng Hardware ID) |
 | `tool_id` | Number | **1** cho Veo 3, **2** cho Sora |
 
 ---
 
-## 💻 Mã nguồn Python mẫu (Khuyên dùng)
+## 💻 Mã nguồn Python mẫu (Tích hợp nhanh)
 
-Dưới đây là một module hoàn chỉnh để bạn tích hợp vào dự án **Veo 3**. Module này hỗ trợ:
-1. Xác thực License.
-2. Lưu key vào thư mục Temp để người dùng không phải nhập lại nhiều lần.
-3. Xử lý lỗi chi tiết (Hết hạn, bị khóa, sai thiết bị).
+Dưới đây là một module hoàn chỉnh hỗ trợ **Xác thực + Lưu key vào Temp**. Bạn có thể copy trực tiếp vào dự án.
 
 ```python
 import requests
@@ -37,54 +33,44 @@ import tempfile
 import json
 
 # --- CẤU HÌNH ---
-# Sử dụng domain chính xác để tránh lỗi 405
 DASHBOARD_URL = "https://dash-board-sora.vercel.app"
-API_ENDPOINT = f"{DASHBOARD_URL}/api/license-check"
+API_URL = f"{DASHBOARD_URL}/api/license-check"
 LICENSE_FILE = os.path.join(tempfile.gettempdir(), ".veo3_license")
-TOOL_ID = 1  # ⚠️ Thay thành 2 nếu là App Sora
+TOOL_ID = 1  # 1: Veo 3, 2: Sora
 
 def get_hwid():
-    """Lấy Hardware ID duy nhất của thiết bị"""
+    """Lấy Hardware ID duy nhất của máy tính"""
     return str(uuid.getnode())
 
-def verify_license(key):
-    """
-    Xác thực chìa khóa với Dashboard
-    Returns: (bool, str) -> (Thành công?, Tin nhắn phản hồi)
-    """
+def check_license(key):
+    """Xác thực chìa khóa với Dashboard"""
     try:
         payload = {
             "license_key": key,
             "device_id": get_hwid(),
             "tool_id": TOOL_ID
         }
+        response = requests.post(API_URL, json=payload, timeout=10)
         
-        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
-        
-        # Kiểm tra nếu API trả về lỗi 405 hoặc lỗi máy chủ
+        # Xử lý các lỗi HTTP nếu có
         if response.status_code == 405:
-            return False, "Lỗi server (405): Vui lòng kiểm tra lại endpoint API."
+            return False, "Lỗi Server (405): Vui lòng liên hệ Admin để cập nhật API."
             
-        result = response.json()
-        
-        if result.get("success") and result.get("status") == "valid":
-            return True, "License hợp lệ!"
-        else:
-            # Lấy chi tiết lỗi từ server (Hết hạn, bị khóa,...)
-            error_msg = result.get("detail", "License không hợp lệ.")
-            return False, error_msg
-            
+        data = response.json()
+        if data.get("success") and data.get("status") == "valid":
+            return True, "Hợp lệ"
+        return False, data.get("detail", "License không hợp lệ")
     except Exception as e:
         return False, f"Lỗi kết nối: {str(e)}"
 
-def save_license(key):
-    """Lưu key vào máy (thư mục temp)"""
+def save_key(key):
+    """Lưu key vào thư mục Temp"""
     try:
         with open(LICENSE_FILE, 'w', encoding='utf-8') as f:
             json.dump({"key": key}, f)
     except: pass
 
-def load_license():
+def load_key():
     """Đọc key đã lưu"""
     if os.path.exists(LICENSE_FILE):
         try:
@@ -93,58 +79,39 @@ def load_license():
         except: return None
     return None
 
-# --- VÍ DỤ TÍCH HỢP VÀO APP ---
-
-def activate_app():
-    # 1. Thử đọc key cũ đã lưu trong Temp
-    saved_key = load_license()
-    
+# --- LUỒNG XỬ LÝ KHI MỞ APP ---
+def start_verification():
+    saved_key = load_key()
     if saved_key:
-        print(f"🔄 Đang kiểm tra key cũ: {saved_key}...")
-        is_ok, msg = verify_license(saved_key)
-        if is_ok:
-            print("✅ Đăng nhập thành công!")
-            return True
-        else:
-            print(f"❌ Lỗi: {msg}")
+        print(f"🔄 Đang kiểm tra License: {saved_key}")
+        is_ok, msg = check_license(saved_key)
+        if is_ok: return True
 
-    # 2. Nếu chưa có key hoặc key cũ hỏng -> Yêu cầu nhập mới
-    print("\n--- KÍCH HOẠT VEO 3 ---")
-    new_key = input("Vui lòng nhập License Key: ").strip()
-    
-    is_ok, msg = verify_license(new_key)
+    new_key = input("🔑 Nhập License Key: ").strip()
+    is_ok, msg = check_license(new_key)
     if is_ok:
-        save_license(new_key)
-        print("✅ Kích hoạt thành công! Key đã được lưu.")
+        save_key(new_key)
+        print("✅ Kích hoạt thành công!")
         return True
-    else:
-        print(f"❌ Không thể kích hoạt: {msg}")
-        return False
-
-if __name__ == "__main__":
-    if activate_app():
-        print("🚀 Khởi động Veo 3...")
-    else:
-        print("🛑 Ứng dụng đã dừng.")
+    
+    print(f"❌ Thất bại: {msg}")
+    return False
 ```
 
 ---
 
-## 📋 Danh sách mã phản hồi từ Server
+## 📋 Bảng mã phản hồi lỗi (detail)
 
-Khi `success` là `false`, hãy kiểm tra giá trị `detail` để báo cho người dùng:
-
-| Nội dung `detail` | Ý nghĩa |
-| :--- | :--- |
-| `License key not found` | Key không tồn tại trên hệ thống. |
-| `License is inactive` | **Key đã bị Admin khóa.** |
-| `License expired` | Key đã hết hạn sử dụng. |
-| `This key is for Sora only` | Key này chỉ dùng cho Sora, không dùng được cho Veo. |
-| `Max devices reached` | Đã hết lượt dùng cho thiết bị này. |
+| Thông báo | Ý nghĩa | Cách xử lý |
+| :--- | :--- | :--- |
+| `License key not found` | Key không tồn tại | Kiểm tra lại từng ký tự của Key. |
+| `License is inactive` | **Admin đã khóa Key** | Liên hệ Admin để mở khóa. |
+| `License expired` | Key đã hết hạn | Gia hạn thêm thời gian sử dụng. |
+| `This key is for Sora only` | Sai loại Tool | Dùng đúng Key được cấp cho Veo 3. |
+| `Max devices reached` | Hết lượt đổi thiết bị | Nhờ Admin reset thiết bị trên Dashboard. |
 
 ---
 
-## ⚠️ Lưu ý quan trọng
-- **Bắt buộc** dùng `/api/license-check` (không dùng `/api/license/check`).
-- Nếu gặp lỗi `Expecting value: line 1 column 1`, có nghĩa là API trả về HTML (thường là lỗi 405 hoặc 404) thay vì JSON. Hãy kiểm tra lại URL.
-- Key lưu ở Temp sẽ bị xóa nếu người dùng dọn dẹp hệ thống, app sẽ yêu cầu nhập lại khi đó.
+## ⚠️ Giải quyết sự cố (Troubleshooting)
+- **Lỗi 405 hoặc 404:** Thường xảy ra khi Vercel đang kẹt bản build cũ. Hãy đợi 1-2 phút hoặc kiểm tra lại URL có `/api/license-check` ở cuối không.
+- **Lỗi "Expecting value":** Nghĩa là server trả về lỗi HTML thay vì JSON. Nguyên nhân thường do URL bị sai hoặc Server đang bảo trì.

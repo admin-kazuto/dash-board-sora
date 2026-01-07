@@ -1,14 +1,13 @@
 # System License Integration Guide
 
-This guide explains how to connect your Python applications (Veo 3 or Sora) to the License Management Dashboard.
+This guide provides the official documentation on how to connect your Python applications (Veo 3 or Sora) to the License Management Dashboard.
 
-## 🚀 Latest API Endpoint
-To avoid **405 (Method Not Allowed)** errors, please use this optimized endpoint:
+## 🚀 Official API Endpoint
+The following endpoint is optimized for high availability on Vercel.
 
-- **Main Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
-- **Backup Endpoint**: `https://dash-board-sora.vercel.app/api/check`
+- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
 - **Method**: `POST`
-- **Payload**: `JSON`
+- **Format**: `JSON`
 
 ---
 
@@ -16,13 +15,13 @@ To avoid **405 (Method Not Allowed)** errors, please use this optimized endpoint
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `license_key` | String | User-provided key (e.g., `VEO-XXXX-XXXX`) |
-| `device_id` | String | Unique hardware identifier (MAC-based) |
+| `license_key` | String | The license key provided by Admin (e.g., `VEO-XXXX-XXXX`) |
+| `device_id` | String | Unique hardware identifier for the machine |
 | `tool_id` | Number | **1** for Veo 3, **2** for Sora |
 
 ---
 
-## 💻 Python Example Code
+## 💻 Python Implementation Example
 
 ```python
 import requests
@@ -33,49 +32,66 @@ import json
 
 # --- CONFIGURATION ---
 DASHBOARD_URL = "https://dash-board-sora.vercel.app"
-API_ENDPOINT = f"{DASHBOARD_URL}/api/license-check"
+API_URL = f"{DASHBOARD_URL}/api/license-check"
 LICENSE_FILE = os.path.join(tempfile.gettempdir(), ".veo_license")
 TOOL_ID = 1  # 1 for Veo, 2 for Sora
 
 def get_hwid():
+    """Returns a unique hardware identifier based on MAC address"""
     return str(uuid.getnode())
 
 def verify_license(key):
+    """Verifies the license key with the Dashboard"""
     try:
         payload = {
             "license_key": key,
             "device_id": get_hwid(),
             "tool_id": TOOL_ID
         }
-        r = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        response = requests.post(API_URL, json=payload, timeout=10)
         
-        if r.status_code == 405:
-            return False, "Server Error (405). Please use /api/license-check endpoint."
+        if response.status_code == 405:
+            return False, "Server Error (405). The API endpoint is likely offline."
             
-        result = r.json()
-        if result.get("success") and result.get("status") == "valid":
+        data = response.json()
+        if data.get("success") and data.get("status") == "valid":
             return True, "Valid"
-        return False, result.get("detail", "Invalid license")
+        
+        return False, data.get("detail", "Invalid license key")
     except Exception as e:
         return False, str(e)
 
-# ... Implementation logic for temp storage is identical to the VEO3 guide ...
+def save_license(key):
+    """Caches key locally in temp folder"""
+    try:
+        with open(LICENSE_FILE, 'w', encoding='utf-8') as f:
+            json.dump({"key": key}, f)
+    except: pass
+
+def load_license():
+    """Loads cached key if available"""
+    if os.path.exists(LICENSE_FILE):
+        try:
+            with open(LICENSE_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f).get("key")
+        except: return None
+    return None
 ```
 
 ---
 
-## 📋 Server Responses
+## 📋 Server Feedback Messages (`detail`)
 
-| `detail` message | Meaning |
-| :--- | :--- |
-| `License key not found` | Key doesn't exist. |
-| `License is inactive` | **Key has been blocked by Admin.** |
-| `License expired` | Key is no longer valid. |
-| `This key is for Sora only` | Tool mismatch (Sora key used for Veo). |
-| `Max devices reached` | Device limit exceeded. |
+| Message | Meaning | Recovery Steps |
+| :--- | :--- | :--- |
+| `License key not found` | Key is non-existent | Verify the characters in your key. |
+| `License is inactive` | **Key is Blocked** | Contact support to re-activate. |
+| `License expired` | Key has timed out | Purchase a subscription extension. |
+| `This key is for Sora only` | Tool mismatch | Use a license valid for the active tool. |
+| `Max devices reached` | Hardware limit reached| Ask Admin to reset devices on Dashboard. |
 
 ---
 
-## ⚠️ Troubleshooting Tips
-- If you receive a **405 error**, check that your URL ends in `/api/license-check` exactly.
-- If the response is not valid JSON (`Expecting value...`), the server likely returned a 404 or 405 HTML page.
+## ⚠️ Common Troubleshooting
+- **405 Method Not Allowed:** Usually a deployment caching issue. Wait 1-2 minutes for Vercel to fully update after a push. Ensure your URL ends in `/api/license-check`.
+- **JSON Parse Error:** If you get a "Expecting value" error, the server returned an HTML error page. Check your internet connection and verify the Dashboard URL is online.
