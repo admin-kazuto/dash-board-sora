@@ -1,65 +1,219 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { FaKey, FaVideo, FaCheckCircle, FaTrash, FaRedo, FaPlus, FaDesktop } from 'react-icons/fa';
+
+interface License {
+  _id: string;
+  key: string;
+  description: string;
+  max_devices: number;
+  devices: string[];
+  valid_until: string;
+  is_active: boolean;
+}
+
+interface Stats {
+  total_licenses: number;
+  active_licenses: number;
+  total_videos: number;
+  success_rate: number;
+}
+
+export default function Dashboard() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // New license form
+  const [newKey, setNewKey] = useState('');
+  const [description, setDescription] = useState('');
+  const [maxDevices, setMaxDevices] = useState(1);
+  const [daysValid, setDaysValid] = useState(30);
+
+  const fetchData = async () => {
+    try {
+      const statsRes = await axios.get('/api/dashboard');
+      const licensesRes = await axios.get('/api/licenses');
+
+      if (statsRes.data.success) setStats(statsRes.data.stats);
+      if (licensesRes.data.success) setLicenses(licensesRes.data.licenses);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const generateKey = () => {
+    const key = 'SORA-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    setNewKey(key);
+  };
+
+  const createLicense = async () => {
+    try {
+      const validUntil = new Date();
+      validUntil.setDate(validUntil.getDate() + daysValid);
+
+      await axios.post('/api/licenses', {
+        key: newKey,
+        description,
+        max_devices: maxDevices,
+        valid_until: validUntil
+      });
+
+      setNewKey('');
+      setDescription('');
+      fetchData();
+    } catch (error) {
+      alert('Error creating license');
+    }
+  };
+
+  const deleteLicense = async (id: string) => {
+    if (!confirm('Are you sure?')) return;
+    try {
+      await axios.delete(`/api/licenses/${id}`);
+      fetchData();
+    } catch (error) {
+      alert('Error deleting license');
+    }
+  };
+
+  const resetDevices = async (id: string) => {
+    try {
+      await axios.put(`/api/licenses/${id}`, { devices: [] });
+      fetchData();
+      alert('Devices reset successfully');
+    } catch (error) {
+      alert('Error resetting devices');
+    }
+  }
+
+  if (loading) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8 flex items-center gap-3">
+          <span className="bg-purple-600 p-2 rounded-lg">🚀</span> Sora Dashboard
+        </h1>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <StatCard icon={<FaKey />} title="Total Licenses" value={stats?.total_licenses || 0} color="bg-blue-600" />
+          <StatCard icon={<FaCheckCircle />} title="Active Licenses" value={stats?.active_licenses || 0} color="bg-green-600" />
+          <StatCard icon={<FaVideo />} title="Total Videos" value={stats?.total_videos || 0} color="bg-purple-600" />
+          <StatCard icon={<FaCheckCircle />} title="Success Rate" value={(stats?.success_rate || 0) + '%'} color="bg-orange-600" />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* License Manager */}
+        <div className="bg-gray-800 rounded-xl p-6 shadow-xl border border-gray-700">
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <FaKey className="text-yellow-500" /> License Manager
+          </h2>
+
+          {/* Create Form */}
+          <div className="bg-gray-700 p-4 rounded-lg mb-8 flex gap-4 flex-wrap items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm text-gray-400 block mb-1">License Key</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  placeholder="Key..."
+                  className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-sm"
+                />
+                <button onClick={generateKey} className="bg-gray-600 px-3 rounded hover:bg-gray-500"><FaRedo /></button>
+              </div>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm text-gray-400 block mb-1">Description</label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Client name..."
+                className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm"
+              />
+            </div>
+            <div className="w-24">
+              <label className="text-sm text-gray-400 block mb-1">Max Devices</label>
+              <input
+                type="number"
+                value={maxDevices}
+                onChange={(e) => setMaxDevices(parseInt(e.target.value))}
+                className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm"
+              />
+            </div>
+            <button onClick={createLicense} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 h-[38px]">
+              <FaPlus /> Create
+            </button>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-700 text-gray-300 text-sm uppercase">
+                  <th className="p-4 rounded-tl-lg">Key</th>
+                  <th className="p-4">Description</th>
+                  <th className="p-4">Devices</th>
+                  <th className="p-4">Valid Until</th>
+                  <th className="p-4 text-right rounded-tr-lg">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {licenses.map(lic => (
+                  <tr key={lic._id} className="border-b border-gray-700 hover:bg-gray-750">
+                    <td className="p-4 font-mono text-yellow-400">{lic.key}</td>
+                    <td className="p-4 text-gray-300">{lic.description}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${lic.devices.length >= lic.max_devices ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                        {lic.devices.length} / {lic.max_devices}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-400">{new Date(lic.valid_until).toLocaleDateString()}</td>
+                    <td className="p-4 text-right flex justify-end gap-2">
+                      <button onClick={() => resetDevices(lic._id)} title="Reset Devices" className="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white p-2 rounded transition">
+                        <FaDesktop />
+                      </button>
+                      <button onClick={() => deleteLicense(lic._id)} title="Delete" className="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white p-2 rounded transition">
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {licenses.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-gray-500">No licenses found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
+}
+
+function StatCard({ icon, title, value, color }: any) {
+  return (
+    <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg flex items-center gap-4">
+      <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center text-xl`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-gray-400 text-sm">{title}</p>
+        <p className="text-2xl font-bold">{value}</p>
+      </div>
+    </div>
+  )
 }
