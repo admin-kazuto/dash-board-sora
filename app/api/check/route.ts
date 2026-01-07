@@ -61,14 +61,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, status: 'invalid', detail: `This key is for ${toolName} only` });
         }
 
-        // Device check
-        if (!license.devices.includes(device_id)) {
+        // Device check and registration
+        const devId = String(device_id);
+        if (!license.devices.includes(devId)) {
             if (license.devices.length >= license.max_devices) {
                 return NextResponse.json({ success: false, status: 'invalid', detail: 'Max devices reached' });
             }
-            // Add device
-            license.devices.push(device_id);
-            await license.save();
+
+            // Atomic update to ensure it saves in serverless environment
+            await License.updateOne(
+                { _id: license._id },
+                { $addToSet: { devices: devId } }
+            );
         }
 
         return NextResponse.json({ success: true, status: 'valid' });
