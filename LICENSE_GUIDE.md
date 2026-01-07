@@ -1,73 +1,80 @@
-# License Integration Guide (Veo 3)
+# System License Integration Guide
 
-This guide explains how to integrate the license verification system into your Python application (Veo 3).
+This guide explains how to connect your Python applications (Veo 3 or Sora) to the License Management Dashboard.
 
-## API Endpoint
-- **URL**: `https://dash-board-sora.vercel.app/api/license-check`
+## 🚀 Latest API Endpoint
+To avoid **405 (Method Not Allowed)** errors, please use this optimized endpoint:
+
+- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
 - **Method**: `POST`
-- **Content-Type**: `application/json`
+- **Payload**: `JSON`
 
-## Request Body
-You must send the following fields in the JSON body:
+---
+
+## 🛠️ Request Payload Structure
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `license_key` | String | The license key provided by the user (e.g., `VEO-XXXX-XXXX`). |
-| `device_id` | String | A unique identifier for the machine (e.g., MAC address, UUID). |
-| `tool_id` | Number | **Must be 1 for Veo 3** (Sora is 2). |
+| `license_key` | String | User-provided key (e.g., `VEO-XXXX-XXXX`) |
+| `device_id` | String | Unique hardware identifier (MAC-based) |
+| `tool_id` | Number | **1** for Veo 3, **2** for Sora |
 
-### Example Python Code (using `requests`)
+---
+
+## 💻 Python Example Code
 
 ```python
 import requests
 import uuid
+import os
+import tempfile
+import json
 
-def check_license(key):
-    url = "https://dash-board-sora.vercel.app/api/license-check"
-    device_id = str(uuid.getnode()) # Simple MAC-based ID
-    
-    payload = {
-        "license_key": key,
-        "device_id": device_id,
-        "tool_id": 1  # 1 for Veo, 2 for Sora
-    }
-    
+# --- CONFIGURATION ---
+DASHBOARD_URL = "https://dash-board-sora.vercel.app"
+API_ENDPOINT = f"{DASHBOARD_URL}/api/license-check"
+LICENSE_FILE = os.path.join(tempfile.gettempdir(), ".veo_license")
+TOOL_ID = 1  # 1 for Veo, 2 for Sora
+
+def get_hwid():
+    return str(uuid.getnode())
+
+def verify_license(key):
     try:
-        response = requests.post(url, json=payload, timeout=10)
-        result = response.json()
+        payload = {
+            "license_key": key,
+            "device_id": get_hwid(),
+            "tool_id": TOOL_ID
+        }
+        r = requests.post(API_ENDPOINT, json=payload, timeout=10)
         
+        if r.status_code == 405:
+            return False, "Server Error (405). Please use /api/license-check endpoint."
+            
+        result = r.json()
         if result.get("success") and result.get("status") == "valid":
-            print("✅ License is valid!")
-            return True
-        else:
-            reason = result.get("detail", "Unknown error")
-            print(f"❌ License invalid: {reason}")
-            return False
+            return True, "Valid"
+        return False, result.get("detail", "Invalid license")
     except Exception as e:
-        print(f"⚠️ Error checking license: {e}")
-        return False
+        return False, str(e)
+
+# ... Implementation logic for temp storage is identical to the VEO3 guide ...
 ```
 
-## Response Handling
+---
 
-The API will return a JSON object:
+## 📋 Server Responses
 
-### Success (Valid)
-```json
-{
-  "success": true,
-  "status": "valid"
-}
-```
+| `detail` message | Meaning |
+| :--- | :--- |
+| `License key not found` | Key doesn't exist. |
+| `License is inactive` | **Key has been blocked by Admin.** |
+| `License expired` | Key is no longer valid. |
+| `This key is for Sora only` | Tool mismatch (Sora key used for Veo). |
+| `Max devices reached` | Device limit exceeded. |
 
-### Failure (Invalid/Expired/Wrong Tool)
-```json
-{
-  "success": false,
-  "status": "invalid",
-  "detail": "This key is for Sora only" 
-}
-```
+---
 
-> [!IMPORTANT]
-> Always enforce the `tool_id` on the client-side to prevent users from using a Sora license for Veo or vice versa.
+## ⚠️ Troubleshooting Tips
+- If you receive a **405 error**, check that your URL ends in `/api/license-check` exactly.
+- If the response is not valid JSON (`Expecting value...`), the server likely returned a 404 or 405 HTML page.
