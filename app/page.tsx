@@ -253,45 +253,60 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {licenses.map(lic => (
-                  <tr key={lic._id} className={`border-b border-gray-700 hover:bg-gray-750 transition ${!lic.is_active ? 'opacity-50 grayscale' : ''}`}>
-                    <td className="p-4 font-mono text-yellow-400 font-bold">{lic.key}</td>
-                    <td className="p-4 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${lic.is_active ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-                        {lic.is_active ? 'Active' : 'Blocked'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${lic.tool_id === 1 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
-                        {lic.tool_id === 1 ? 'Veo 3' : 'Sora'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-300">{lic.description}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${lic.devices.length >= lic.max_devices ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
-                        {lic.devices.length} / {lic.max_devices}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-400">
-                      {new Date(lic.valid_until).getFullYear() === 2099 ? 'Forever' : new Date(lic.valid_until).toLocaleString()}
-                    </td>
-                    <td className="p-4 text-right flex justify-end gap-2">
-                      <button
-                        onClick={() => toggleLicenseStatus(lic._id, lic.is_active)}
-                        title={lic.is_active ? "Block Key" : "Unblock Key"}
-                        className={`p-2 rounded transition border ${lic.is_active ? 'bg-red-600/10 text-red-400 border-red-600/30 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-400 border-green-600/30 hover:bg-green-600 hover:text-white'}`}
-                      >
-                        {lic.is_active ? <FaBan /> : <FaToggleOn />}
-                      </button>
-                      <button onClick={() => resetDevices(lic._id)} title="Reset Devices" className="bg-blue-600/10 text-blue-400 border border-blue-600/30 hover:bg-blue-600 hover:text-white p-2 rounded transition">
-                        <FaDesktop />
-                      </button>
-                      <button onClick={() => deleteLicense(lic._id)} title="Delete" className="bg-orange-600/10 text-orange-400 border border-orange-600/30 hover:bg-orange-600 hover:text-white p-2 rounded transition">
-                        <FaTrash />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {licenses.map(lic => {
+                  const isExpired = new Date() > new Date(lic.valid_until);
+                  const isRowDisabled = !lic.is_active || isExpired;
+
+                  return (
+                    <tr key={lic._id} className={`border-b border-gray-700 hover:bg-gray-750 transition ${isRowDisabled ? 'opacity-50 grayscale' : ''}`}>
+                      <td className="p-4 font-mono text-yellow-400 font-bold">{lic.key}</td>
+                      <td className="p-4 text-center">
+                        {!lic.is_active ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
+                            Blocked
+                          </span>
+                        ) : new Date() > new Date(lic.valid_until) ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                            Expired
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-green-500/20 text-green-400 border border-green-500/30">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${lic.tool_id === 1 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
+                          {lic.tool_id === 1 ? 'Veo 3' : 'Sora'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-300">{lic.description}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-xs ${lic.devices.length >= lic.max_devices ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                          {lic.devices.length} / {lic.max_devices}
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-400">
+                        {new Date(lic.valid_until).getFullYear() === 2099 ? 'Forever' : new Date(lic.valid_until).toLocaleString()}
+                      </td>
+                      <td className="p-4 text-right flex justify-end gap-2">
+                        <button
+                          onClick={() => toggleLicenseStatus(lic._id, lic.is_active)}
+                          title={lic.is_active ? "Block Key" : "Unblock Key"}
+                          className={`p-2 rounded transition border ${lic.is_active ? 'bg-red-600/10 text-red-400 border-red-600/30 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-400 border-green-600/30 hover:bg-green-600 hover:text-white'}`}
+                        >
+                          {lic.is_active ? <FaBan /> : <FaToggleOn />}
+                        </button>
+                        <button onClick={() => resetDevices(lic._id)} title="Reset Devices" className="bg-blue-600/10 text-blue-400 border border-blue-600/30 hover:bg-blue-600 hover:text-white p-2 rounded transition">
+                          <FaDesktop />
+                        </button>
+                        <button onClick={() => deleteLicense(lic._id)} title="Delete" className="bg-orange-600/10 text-orange-400 border border-orange-600/30 hover:bg-orange-600 hover:text-white p-2 rounded transition">
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {licenses.length === 0 && (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-gray-500">No licenses found</td>

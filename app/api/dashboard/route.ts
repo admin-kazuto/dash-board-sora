@@ -8,7 +8,10 @@ export async function GET() {
         await dbConnect();
 
         const totalLicenses = await License.countDocuments();
-        const activeLicenses = await License.countDocuments({ is_active: true });
+        const activeLicenses = await License.countDocuments({
+            is_active: true,
+            valid_until: { $gt: new Date() }
+        });
 
         const totalVideos = await Video.countDocuments();
         const successVideos = await Video.countDocuments({ status: 'success' });
