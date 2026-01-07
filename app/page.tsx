@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaKey, FaVideo, FaCheckCircle, FaTrash, FaRedo, FaPlus, FaDesktop } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
+import { FaKey, FaVideo, FaCheckCircle, FaTrash, FaRedo, FaPlus, FaDesktop, FaBan, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 
 interface License {
   _id: string;
@@ -32,7 +33,9 @@ export default function Dashboard() {
   const [description, setDescription] = useState('');
   const [maxDevices, setMaxDevices] = useState(1);
   const [toolId, setToolId] = useState(2); // 1: Veo, 2: Sora
-  const [expirationType, setExpirationType] = useState('1m'); // 1d, 1w, 1m, 1y, forever
+  const [expirationType, setExpirationType] = useState('1m'); // 1d, 1w, 1m, 1y, forever, custom
+  const [customDate, setCustomDate] = useState('');
+  const router = useRouter();
 
   const fetchData = async () => {
     try {
@@ -49,8 +52,17 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    // Simple Auth Check
+    const checkAuth = () => {
+      const hasToken = document.cookie.includes('auth_token=');
+      if (!hasToken) {
+        router.push('/login');
+      } else {
+        fetchData();
+      }
+    };
+    checkAuth();
+  }, [router]);
 
   const generateKey = () => {
     const prefix = toolId === 1 ? 'VEO-' : 'SORA-';
@@ -60,8 +72,10 @@ export default function Dashboard() {
 
   const createLicense = async () => {
     try {
-      const validUntil = new Date();
-      if (expirationType === '1d') validUntil.setDate(validUntil.getDate() + 1);
+      let validUntil = new Date();
+      if (expirationType === 'custom' && customDate) {
+        validUntil = new Date(customDate);
+      } else if (expirationType === '1d') validUntil.setDate(validUntil.getDate() + 1);
       else if (expirationType === '1w') validUntil.setDate(validUntil.getDate() + 7);
       else if (expirationType === '1m') validUntil.setDate(validUntil.getDate() + 30);
       else if (expirationType === '1y') validUntil.setDate(validUntil.getDate() + 365);
@@ -103,14 +117,33 @@ export default function Dashboard() {
     }
   }
 
+  const toggleLicenseStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      await axios.put(`/api/licenses/${id}`, { is_active: !currentStatus });
+      fetchData();
+    } catch (error) {
+      alert('Error updating license status');
+    }
+  };
+
+  const handleLogout = () => {
+    document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    router.push('/login');
+  };
+
   if (loading) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 flex items-center gap-3">
-          <span className="bg-purple-600 p-2 rounded-lg">🚀</span> Sora Dashboard
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <span className="bg-purple-600 p-2 rounded-lg text-2xl">🚀</span> Admin Dashboard
+          </h1>
+          <button onClick={handleLogout} className="bg-gray-800 hover:bg-red-600/20 text-gray-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm transition border border-gray-700">
+            Đăng xuất
+          </button>
+        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
@@ -178,7 +211,16 @@ export default function Dashboard() {
                   <option value="1m">1 Month</option>
                   <option value="1y">1 Year</option>
                   <option value="forever">Forever (2099)</option>
+                  <option value="custom">📅 Custom Date/Time</option>
                 </select>
+                {expirationType === 'custom' && (
+                  <input
+                    type="datetime-local"
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                    className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm outline-none focus:border-purple-500"
+                  />
+                )}
               </div>
               <div className="w-32">
                 <label className="text-sm text-gray-400 block mb-1">Max Devices</label>
@@ -202,6 +244,7 @@ export default function Dashboard() {
               <thead>
                 <tr className="bg-gray-700 text-gray-300 text-sm uppercase">
                   <th className="p-4 rounded-tl-lg">Key</th>
+                  <th className="p-4 text-center">Status</th>
                   <th className="p-4">Tool</th>
                   <th className="p-4">Description</th>
                   <th className="p-4">Devices</th>
@@ -211,8 +254,13 @@ export default function Dashboard() {
               </thead>
               <tbody className="text-sm">
                 {licenses.map(lic => (
-                  <tr key={lic._id} className="border-b border-gray-700 hover:bg-gray-750">
-                    <td className="p-4 font-mono text-yellow-400">{lic.key}</td>
+                  <tr key={lic._id} className={`border-b border-gray-700 hover:bg-gray-750 transition ${!lic.is_active ? 'opacity-50 grayscale' : ''}`}>
+                    <td className="p-4 font-mono text-yellow-400 font-bold">{lic.key}</td>
+                    <td className="p-4 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${lic.is_active ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                        {lic.is_active ? 'Active' : 'Blocked'}
+                      </span>
+                    </td>
                     <td className="p-4">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${lic.tool_id === 1 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
                         {lic.tool_id === 1 ? 'Veo 3' : 'Sora'}
@@ -224,12 +272,21 @@ export default function Dashboard() {
                         {lic.devices.length} / {lic.max_devices}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-400">{new Date(lic.valid_until).getFullYear() === 2099 ? 'Forever' : new Date(lic.valid_until).toLocaleDateString()}</td>
+                    <td className="p-4 text-gray-400">
+                      {new Date(lic.valid_until).getFullYear() === 2099 ? 'Forever' : new Date(lic.valid_until).toLocaleString()}
+                    </td>
                     <td className="p-4 text-right flex justify-end gap-2">
-                      <button onClick={() => resetDevices(lic._id)} title="Reset Devices" className="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white p-2 rounded transition">
+                      <button
+                        onClick={() => toggleLicenseStatus(lic._id, lic.is_active)}
+                        title={lic.is_active ? "Block Key" : "Unblock Key"}
+                        className={`p-2 rounded transition border ${lic.is_active ? 'bg-red-600/10 text-red-400 border-red-600/30 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-400 border-green-600/30 hover:bg-green-600 hover:text-white'}`}
+                      >
+                        {lic.is_active ? <FaBan /> : <FaToggleOn />}
+                      </button>
+                      <button onClick={() => resetDevices(lic._id)} title="Reset Devices" className="bg-blue-600/10 text-blue-400 border border-blue-600/30 hover:bg-blue-600 hover:text-white p-2 rounded transition">
                         <FaDesktop />
                       </button>
-                      <button onClick={() => deleteLicense(lic._id)} title="Delete" className="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white p-2 rounded transition">
+                      <button onClick={() => deleteLicense(lic._id)} title="Delete" className="bg-orange-600/10 text-orange-400 border border-orange-600/30 hover:bg-orange-600 hover:text-white p-2 rounded transition">
                         <FaTrash />
                       </button>
                     </td>
