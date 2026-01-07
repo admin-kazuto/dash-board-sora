@@ -5,7 +5,7 @@ This guide provides the official documentation on how to connect your Python app
 ## 🚀 Official API Endpoint
 The following endpoint is optimized for high availability on Vercel.
 
-- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
+- **Endpoint**: `https://dash-board-sora-eyuo.vercel.app/api/license-check`
 - **Method**: `POST`
 - **Format**: `JSON`
 
@@ -31,7 +31,7 @@ import tempfile
 import json
 
 # --- CONFIGURATION ---
-DASHBOARD_URL = "https://dash-board-sora.vercel.app"
+DASHBOARD_URL = "https://dash-board-sora-eyuo.vercel.app"
 API_URL = f"{DASHBOARD_URL}/api/license-check"
 LICENSE_FILE = os.path.join(tempfile.gettempdir(), ".veo_license")
 TOOL_ID = 1  # 1 for Veo, 2 for Sora

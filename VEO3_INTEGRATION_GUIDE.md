@@ -5,7 +5,7 @@ Tài liệu này cung cấp hướng dẫn tối ưu để kết nối ứng d�
 ## 🚀 Thông tin API Chính thức
 Cấu trúc API đã được tối ưu hóa để đảm bảo tốc độ và tính ổn định trên môi trường Vercel.
 
-- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
+- **Endpoint**: `https://dash-board-sora-eyuo.vercel.app/api/license-check`
 - **Phương thức**: 
     - `POST`: Dùng để xác thực và đăng ký thiết bị (Chính).
     - `GET`: Dùng để kiểm tra trạng thái hoạt động của API (Health Check).
@@ -19,7 +19,7 @@ Cấu trúc API đã được tối ưu hóa để đảm bảo tốc độ và 
 | :--- | :--- | :--- |
 | `license_key` | String | Chìa khóa do Admin cấp (VD: `VEO-XXXX-XXXX`) |
 | `device_id` | String | ID định danh máy tính (Khuyên dùng Hardware ID) |
-| `tool_id` | Number | **1** cho Veo 3, **2** cho Sora |
+| `tool_id` | Number | **1** cho Veo 3, **2** cho Sora Multi Cookies |
 
 ---
 
@@ -35,7 +35,7 @@ import tempfile
 import json
 
 # --- CẤU HÌNH ---
-DASHBOARD_URL = "https://dash-board-sora.vercel.app"
+DASHBOARD_URL = "https://dash-board-sora-eyuo.vercel.app"
 API_URL = f"{DASHBOARD_URL}/api/license-check"
 LICENSE_FILE = os.path.join(tempfile.gettempdir(), ".veo3_license")
 TOOL_ID = 1  # 1: Veo 3, 2: Sora
@@ -98,6 +98,13 @@ def start_verification():
     
     print(f"❌ Thất bại: {msg}")
     return False
+
+# --- TÍCH HỢP CHO SORA MULTI COOKIES ---
+# Tool ID: 2
+# Tính năng:
+# 1. Mỗi lần mở app đều check license tự động.
+# 2. Nếu license sai hoặc hết hạn, hiển thị UI yêu cầu nhập key.
+# 3. Không cho phép truy cập nếu không có license hợp lệ.
 ```
 
 ---

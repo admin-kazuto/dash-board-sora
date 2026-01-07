@@ -117,6 +117,46 @@ export default function Dashboard() {
     }
   }
 
+  const deleteDevice = async (licId: string, deviceId: string) => {
+    if (!confirm('Xóa thiết bị này khỏi license?')) return;
+    try {
+      const license = licenses.find(l => l._id === licId);
+      if (!license) return;
+      const newDevices = license.devices.filter(d => d !== deviceId);
+      await axios.put(`/api/licenses/${licId}`, { devices: newDevices });
+      fetchData();
+    } catch (error) {
+      alert('Lỗi xóa thiết bị');
+    }
+  };
+
+  const renewLicense = async (licId: string) => {
+    const months = prompt('Nhập số tháng muốn gia hạn (ví dụ: 1):', '1');
+    if (!months) return;
+
+    const numMonths = parseInt(months);
+    if (isNaN(numMonths) || numMonths <= 0) {
+      alert('Số tháng không hợp lệ');
+      return;
+    }
+
+    try {
+      const license = licenses.find(l => l._id === licId);
+      if (!license) return;
+
+      const currentExpiry = new Date(license.valid_until);
+      const baseDate = currentExpiry > new Date() ? currentExpiry : new Date();
+      const newExpiry = new Date(baseDate);
+      newExpiry.setMonth(newExpiry.getMonth() + numMonths);
+
+      await axios.put(`/api/licenses/${licId}`, { valid_until: newExpiry });
+      fetchData();
+      alert(`Gia hạn thành công thêm ${numMonths} tháng`);
+    } catch (error) {
+      alert('Lỗi gia hạn license');
+    }
+  };
+
   const toggleLicenseStatus = async (id: string, currentStatus: boolean) => {
     try {
       await axios.put(`/api/licenses/${id}`, { is_active: !currentStatus });
@@ -135,10 +175,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <span className="bg-purple-600 p-2 rounded-lg text-2xl">🚀</span> Admin Dashboard
+            <span className="bg-purple-600 p-2 rounded-lg text-2xl text-white">🚀</span> Admin Dashboard
           </h1>
           <button onClick={handleLogout} className="bg-gray-800 hover:bg-red-600/20 text-gray-400 hover:text-red-400 px-4 py-2 rounded-lg text-sm transition border border-gray-700">
             Đăng xuất
@@ -160,7 +200,7 @@ export default function Dashboard() {
           </h2>
 
           {/* Create Form */}
-          <div className="bg-gray-700 p-4 rounded-lg mb-8 space-y-4">
+          <div className="bg-gray-700/50 p-6 rounded-lg mb-8 space-y-4 border border-gray-600">
             <div className="flex gap-4 flex-wrap items-end">
               <div className="flex-1 min-w-[200px]">
                 <label className="text-sm text-gray-400 block mb-1">Tool Type</label>
@@ -170,7 +210,7 @@ export default function Dashboard() {
                   className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm outline-none focus:border-purple-500"
                 >
                   <option value={1}>Veo 3</option>
-                  <option value={2}>Sora</option>
+                  <option value={2}>Sora Multi Cookie</option>
                 </select>
               </div>
               <div className="flex-1 min-w-[200px]">
@@ -181,13 +221,13 @@ export default function Dashboard() {
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
                     placeholder="Key..."
-                    className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-sm"
+                    className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-sm text-yellow-400"
                   />
-                  <button onClick={generateKey} className="bg-gray-600 px-3 rounded hover:bg-gray-500"><FaRedo /></button>
+                  <button onClick={generateKey} className="bg-gray-600 px-3 rounded hover:bg-gray-500 transition"><FaRedo /></button>
                 </div>
               </div>
               <div className="flex-1 min-w-[200px]">
-                <label className="text-sm text-gray-400 block mb-1">Description</label>
+                <label className="text-sm text-gray-400 block mb-1">Description (Client Name)</label>
                 <input
                   type="text"
                   value={description}
@@ -218,7 +258,7 @@ export default function Dashboard() {
                     type="datetime-local"
                     value={customDate}
                     onChange={(e) => setCustomDate(e.target.value)}
-                    className="bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm outline-none focus:border-purple-500"
+                    className="mt-2 bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm w-full outline-none focus:border-purple-500"
                   />
                 )}
               </div>
@@ -242,12 +282,12 @@ export default function Dashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-700 text-gray-300 text-sm uppercase">
+                <tr className="bg-gray-700/50 text-gray-300 text-sm uppercase">
                   <th className="p-4 rounded-tl-lg">Key</th>
                   <th className="p-4 text-center">Status</th>
                   <th className="p-4">Tool</th>
                   <th className="p-4">Description</th>
-                  <th className="p-4">Devices</th>
+                  <th className="p-4">Devices (IDs)</th>
                   <th className="p-4">Valid Until</th>
                   <th className="p-4 text-right rounded-tr-lg">Actions</th>
                 </tr>
@@ -258,14 +298,17 @@ export default function Dashboard() {
                   const isRowDisabled = !lic.is_active || isExpired;
 
                   return (
-                    <tr key={lic._id} className={`border-b border-gray-700 hover:bg-gray-750 transition ${isRowDisabled ? 'opacity-50 grayscale' : ''}`}>
-                      <td className="p-4 font-mono text-yellow-400 font-bold">{lic.key}</td>
+                    <tr key={lic._id} className={`border-b border-gray-700 hover:bg-gray-750/50 transition ${isRowDisabled ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                      <td className="p-4">
+                        <div className="font-mono text-yellow-400 font-bold">{lic.key}</div>
+                        <div className="text-[10px] text-gray-500 mt-1">ID: {lic._id}</div>
+                      </td>
                       <td className="p-4 text-center">
                         {!lic.is_active ? (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
                             Blocked
                           </span>
-                        ) : new Date() > new Date(lic.valid_until) ? (
+                        ) : isExpired ? (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-orange-500/20 text-orange-400 border border-orange-500/30">
                             Expired
                           </span>
@@ -282,34 +325,60 @@ export default function Dashboard() {
                       </td>
                       <td className="p-4 text-gray-300">{lic.description}</td>
                       <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-xs ${lic.devices.length >= lic.max_devices ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
-                          {lic.devices.length} / {lic.max_devices}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold w-fit ${lic.devices.length >= lic.max_devices ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {lic.devices.length} / {lic.max_devices} slots
+                          </span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {lic.devices.map(devId => (
+                              <div key={devId} className="flex items-center gap-1 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-700 text-[10px] text-gray-400">
+                                <span>{devId.substring(0, 8)}...</span>
+                                <button onClick={() => deleteDevice(lic._id, devId)} className="text-red-500 hover:text-red-400">
+                                  <FaTrash size={8} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </td>
-                      <td className="p-4 text-gray-400">
-                        {new Date(lic.valid_until).getFullYear() === 2099 ? 'Forever' : new Date(lic.valid_until).toLocaleString()}
+                      <td className="p-4">
+                        <div className={`text-sm ${isExpired ? 'text-orange-400' : 'text-gray-400'}`}>
+                          {new Date(lic.valid_until).getFullYear() === 2099 ? 'Forever' : new Date(lic.valid_until).toLocaleDateString()}
+                        </div>
+                        <div className="text-[10px] text-gray-500">
+                          {new Date(lic.valid_until).toLocaleTimeString()}
+                        </div>
                       </td>
-                      <td className="p-4 text-right flex justify-end gap-2">
-                        <button
-                          onClick={() => toggleLicenseStatus(lic._id, lic.is_active)}
-                          title={lic.is_active ? "Block Key" : "Unblock Key"}
-                          className={`p-2 rounded transition border ${lic.is_active ? 'bg-red-600/10 text-red-400 border-red-600/30 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-400 border-green-600/30 hover:bg-green-600 hover:text-white'}`}
-                        >
-                          {lic.is_active ? <FaBan /> : <FaToggleOn />}
-                        </button>
-                        <button onClick={() => resetDevices(lic._id)} title="Reset Devices" className="bg-blue-600/10 text-blue-400 border border-blue-600/30 hover:bg-blue-600 hover:text-white p-2 rounded transition">
-                          <FaDesktop />
-                        </button>
-                        <button onClick={() => deleteLicense(lic._id)} title="Delete" className="bg-orange-600/10 text-orange-400 border border-orange-600/30 hover:bg-orange-600 hover:text-white p-2 rounded transition">
-                          <FaTrash />
-                        </button>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => renewLicense(lic._id)}
+                            title="Renew License"
+                            className="bg-green-600/10 text-green-400 border border-green-600/30 hover:bg-green-600 hover:text-white p-2 rounded transition"
+                          >
+                            <FaRedo />
+                          </button>
+                          <button
+                            onClick={() => toggleLicenseStatus(lic._id, lic.is_active)}
+                            title={lic.is_active ? "Block Key" : "Unblock Key"}
+                            className={`p-2 rounded transition border ${lic.is_active ? 'bg-red-600/10 text-red-400 border-red-600/30 hover:bg-red-600 hover:text-white' : 'bg-green-600/10 text-green-400 border-green-600/30 hover:bg-green-600 hover:text-white'}`}
+                          >
+                            {lic.is_active ? <FaBan /> : <FaToggleOn />}
+                          </button>
+                          <button onClick={() => resetDevices(lic._id)} title="Reset All Devices" className="bg-blue-600/10 text-blue-400 border border-blue-600/30 hover:bg-blue-600 hover:text-white p-2 rounded transition">
+                            <FaDesktop />
+                          </button>
+                          <button onClick={() => deleteLicense(lic._id)} title="Delete License" className="bg-orange-600/10 text-orange-400 border border-orange-600/30 hover:bg-orange-600 hover:text-white p-2 rounded transition">
+                            <FaTrash />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
                 {licenses.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-gray-500">No licenses found</td>
+                    <td colSpan={7} className="p-8 text-center text-gray-500 italic">No licenses found in database</td>
                   </tr>
                 )}
               </tbody>
