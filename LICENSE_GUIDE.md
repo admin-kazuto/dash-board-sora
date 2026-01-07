@@ -5,7 +5,8 @@ This guide explains how to connect your Python applications (Veo 3 or Sora) to t
 ## 🚀 Latest API Endpoint
 To avoid **405 (Method Not Allowed)** errors, please use this optimized endpoint:
 
-- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
+- **Main Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
+- **Backup Endpoint**: `https://dash-board-sora.vercel.app/api/check`
 - **Method**: `POST`
 - **Payload**: `JSON`
 

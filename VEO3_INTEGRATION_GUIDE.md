@@ -5,8 +5,9 @@ Tài liệu này hướng dẫn cách kết nối ứng dụng của bạn (Pyth
 ## 🚀 Thông tin API mới nhất
 Để tránh lỗi **405 (Method Not Allowed)**, vui lòng sử dụng endpoint đã được tối ưu hóa sau:
 
-- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
-- **Phương thức**: `POST`
+- **Endpoint chính**: `https://dash-board-sora.vercel.app/api/license-check`
+- **Endpoint dự phòng**: `https://dash-board-sora.vercel.app/api/check` (Dùng nếu cái trên lỗi 405)
+- **Method**: `POST`
 - **Định dạng dữ liệu**: `JSON`
 
 ---
