@@ -5,12 +5,12 @@ export async function POST(req: Request) {
         const { username, password } = await req.json();
 
         // Simple auth for dashboard admin
-        if (username === 'admin' && password === 'admin123') {
+        if (username === 'admin' && password === 'tuan16032005') {
             const response = NextResponse.json({ success: true });
 
-            // Set a simple auth cookie
+            // Set a simple auth cookie (httpOnly: false so client can check it)
             response.cookies.set('auth_token', 'dashboard_secret_token', {
-                httpOnly: true,
+                httpOnly: false,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
                 maxAge: 60 * 60 * 24 * 7, // 7 days
