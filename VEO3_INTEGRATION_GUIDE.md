@@ -3,7 +3,7 @@
 Tài liệu này cung cấp hướng dẫn chi tiết cách tích hợp hệ thống kiểm tra License vào ứng dụng **Veo 3** bằng Python.
 
 ## 1. Thông số API
-- **Endpoint**: `https://dash-board-sora.vercel.app/api/license/check`
+- **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
 - **Method**: `POST`
 - **Tool ID**: `1` (Bắt buộc dùng ID 1 cho Veo 3)
 
@@ -38,7 +38,7 @@ def check_license(key):
     - True, "Valid": Key hợp lệ
     - False, "Lý do": Key không hợp lệ, bị khóa, hoặc sai Tool
     """
-    url = f"{DASHBOARD_URL}/api/license/check"
+    url = f"{DASHBOARD_URL}/api/license-check"
     device_id = get_device_id()
     
     payload = {

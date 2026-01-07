@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import License from '@/models/License';
 
+export async function GET() {
+    return NextResponse.json({ message: "License check API is working. Please use POST to verify keys." });
+}
+
 export async function POST(req: Request) {
     try {
         await dbConnect();

@@ -3,7 +3,7 @@
 This guide explains how to integrate the license verification system into your Python application (Veo 3).
 
 ## API Endpoint
-- **URL**: `https://your-dashboard-url.vercel.app/api/license/check`
+- **URL**: `https://dash-board-sora.vercel.app/api/license-check`
 - **Method**: `POST`
 - **Content-Type**: `application/json`
 
@@ -23,7 +23,7 @@ import requests
 import uuid
 
 def check_license(key):
-    url = "https://your-dashboard-url.vercel.app/api/license/check"
+    url = "https://dash-board-sora.vercel.app/api/license-check"
     device_id = str(uuid.getnode()) # Simple MAC-based ID
     
     payload = {
