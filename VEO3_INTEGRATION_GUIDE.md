@@ -6,7 +6,9 @@ Tài liệu này cung cấp hướng dẫn tối ưu để kết nối ứng d�
 Cấu trúc API đã được tối ưu hóa để đảm bảo tốc độ và tính ổn định trên môi trường Vercel.
 
 - **Endpoint**: `https://dash-board-sora.vercel.app/api/license-check`
-- **Phương thức**: `POST`
+- **Phương thức**: 
+    - `POST`: Dùng để xác thực và đăng ký thiết bị (Chính).
+    - `GET`: Dùng để kiểm tra trạng thái hoạt động của API (Health Check).
 - **Định dạng dữ liệu**: `JSON`
 
 ---
