@@ -1,0 +1,41 @@
+[
+    {
+        "key": "SORA-TEST-KEY-001",
+        "description": "Test License 1 (Valid)",
+        "max_devices": 1,
+        "devices": [],
+        "valid_until": {
+            "$date": "2030-01-01T00:00:00.000Z"
+        },
+        "is_active": true,
+        "created_at": {
+            "$date": "2024-01-01T00:00:00.000Z"
+        }
+    },
+    {
+        "key": "SORA-TEST-KEY-002",
+        "description": "Test License 2 (Valid, 3 devices)",
+        "max_devices": 3,
+        "devices": [],
+        "valid_until": {
+            "$date": "2030-01-01T00:00:00.000Z"
+        },
+        "is_active": true,
+        "created_at": {
+            "$date": "2024-01-01T00:00:00.000Z"
+        }
+    },
+    {
+        "key": "SORA-EXPIRED-KEY",
+        "description": "Expired License",
+        "max_devices": 1,
+        "devices": [],
+        "valid_until": {
+            "$date": "2023-01-01T00:00:00.000Z"
+        },
+        "is_active": true,
+        "created_at": {
+            "$date": "2022-01-01T00:00:00.000Z"
+        }
+    }
+]
