@@ -5,7 +5,7 @@ import License from '@/models/License';
 export async function POST(req: Request) {
     try {
         await dbConnect();
-        const { license_key, device_id } = await req.json();
+        const { license_key, device_id, tool_id } = await req.json();
 
         if (!license_key || !device_id) {
             return NextResponse.json({ success: false, error: 'Missing key or device_id' }, { status: 400 });
@@ -14,7 +14,6 @@ export async function POST(req: Request) {
         const license = await License.findOne({ key: license_key });
 
         if (!license) {
-            // Return 200 with invalid status for client compatibility
             return NextResponse.json({ success: false, status: 'invalid', detail: 'License key not found' });
         }
 
@@ -24,6 +23,12 @@ export async function POST(req: Request) {
 
         if (new Date() > license.valid_until) {
             return NextResponse.json({ success: false, status: 'invalid', detail: 'License expired' });
+        }
+
+        // Tool ID check (1: Veo, 2: Sora)
+        if (tool_id && license.tool_id !== tool_id) {
+            const toolName = license.tool_id === 1 ? "Veo" : "Sora";
+            return NextResponse.json({ success: false, status: 'invalid', detail: `This key is for ${toolName} only` });
         }
 
         // Device check

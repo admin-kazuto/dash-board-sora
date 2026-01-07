@@ -19,6 +19,11 @@ export async function POST(req: Request) {
         await dbConnect();
         const body = await req.json();
 
+        // Ensure tool_id is present, default to 2 (Sora)
+        if (!body.tool_id) {
+            body.tool_id = 2;
+        }
+
         // Default valid for 30 days if not specified
         if (!body.valid_until) {
             const date = new Date();

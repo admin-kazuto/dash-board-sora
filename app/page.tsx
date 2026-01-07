@@ -12,6 +12,7 @@ interface License {
   devices: string[];
   valid_until: string;
   is_active: boolean;
+  tool_id: number;
 }
 
 interface Stats {
@@ -30,7 +31,8 @@ export default function Dashboard() {
   const [newKey, setNewKey] = useState('');
   const [description, setDescription] = useState('');
   const [maxDevices, setMaxDevices] = useState(1);
-  const [daysValid, setDaysValid] = useState(30);
+  const [toolId, setToolId] = useState(2); // 1: Veo, 2: Sora
+  const [expirationType, setExpirationType] = useState('1m'); // 1d, 1w, 1m, 1y, forever
 
   const fetchData = async () => {
     try {
@@ -51,19 +53,25 @@ export default function Dashboard() {
   }, []);
 
   const generateKey = () => {
-    const key = 'SORA-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const prefix = toolId === 1 ? 'VEO-' : 'SORA-';
+    const key = prefix + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
     setNewKey(key);
   };
 
   const createLicense = async () => {
     try {
       const validUntil = new Date();
-      validUntil.setDate(validUntil.getDate() + daysValid);
+      if (expirationType === '1d') validUntil.setDate(validUntil.getDate() + 1);
+      else if (expirationType === '1w') validUntil.setDate(validUntil.getDate() + 7);
+      else if (expirationType === '1m') validUntil.setDate(validUntil.getDate() + 30);
+      else if (expirationType === '1y') validUntil.setDate(validUntil.getDate() + 365);
+      else if (expirationType === 'forever') validUntil.setFullYear(2099);
 
       await axios.post('/api/licenses', {
         key: newKey,
         description,
         max_devices: maxDevices,
+        tool_id: toolId,
         valid_until: validUntil
       });
 
@@ -119,42 +127,73 @@ export default function Dashboard() {
           </h2>
 
           {/* Create Form */}
-          <div className="bg-gray-700 p-4 rounded-lg mb-8 flex gap-4 flex-wrap items-end">
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-gray-400 block mb-1">License Key</label>
-              <div className="flex gap-2">
+          <div className="bg-gray-700 p-4 rounded-lg mb-8 space-y-4">
+            <div className="flex gap-4 flex-wrap items-end">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-sm text-gray-400 block mb-1">Tool Type</label>
+                <select
+                  value={toolId}
+                  onChange={(e) => setToolId(parseInt(e.target.value))}
+                  className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm outline-none focus:border-purple-500"
+                >
+                  <option value={1}>Veo 3</option>
+                  <option value={2}>Sora</option>
+                </select>
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-sm text-gray-400 block mb-1">License Key</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    placeholder="Key..."
+                    className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-sm"
+                  />
+                  <button onClick={generateKey} className="bg-gray-600 px-3 rounded hover:bg-gray-500"><FaRedo /></button>
+                </div>
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-sm text-gray-400 block mb-1">Description</label>
                 <input
                   type="text"
-                  value={newKey}
-                  onChange={(e) => setNewKey(e.target.value)}
-                  placeholder="Key..."
-                  className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-sm"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Client name..."
+                  className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm"
                 />
-                <button onClick={generateKey} className="bg-gray-600 px-3 rounded hover:bg-gray-500"><FaRedo /></button>
               </div>
             </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm text-gray-400 block mb-1">Description</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Client name..."
-                className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm"
-              />
+
+            <div className="flex gap-4 flex-wrap items-end">
+              <div className="flex-1 min-w-[150px]">
+                <label className="text-sm text-gray-400 block mb-1">Expiration</label>
+                <select
+                  value={expirationType}
+                  onChange={(e) => setExpirationType(e.target.value)}
+                  className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm outline-none focus:border-purple-500"
+                >
+                  <option value="1d">1 Day</option>
+                  <option value="1w">1 Week</option>
+                  <option value="1m">1 Month</option>
+                  <option value="1y">1 Year</option>
+                  <option value="forever">Forever (2099)</option>
+                </select>
+              </div>
+              <div className="w-32">
+                <label className="text-sm text-gray-400 block mb-1">Max Devices</label>
+                <input
+                  type="number"
+                  value={maxDevices}
+                  onChange={(e) => setMaxDevices(parseInt(e.target.value))}
+                  className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm"
+                />
+              </div>
+              <div className="flex-1"></div>
+              <button onClick={createLicense} className="bg-purple-600 hover:bg-purple-500 text-white px-8 py-2 rounded-lg font-bold flex items-center gap-2 h-[38px] transition shadow-lg shadow-purple-900/20">
+                <FaPlus /> Create License
+              </button>
             </div>
-            <div className="w-24">
-              <label className="text-sm text-gray-400 block mb-1">Max Devices</label>
-              <input
-                type="number"
-                value={maxDevices}
-                onChange={(e) => setMaxDevices(parseInt(e.target.value))}
-                className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm"
-              />
-            </div>
-            <button onClick={createLicense} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 h-[38px]">
-              <FaPlus /> Create
-            </button>
           </div>
 
           {/* Table */}
@@ -163,6 +202,7 @@ export default function Dashboard() {
               <thead>
                 <tr className="bg-gray-700 text-gray-300 text-sm uppercase">
                   <th className="p-4 rounded-tl-lg">Key</th>
+                  <th className="p-4">Tool</th>
                   <th className="p-4">Description</th>
                   <th className="p-4">Devices</th>
                   <th className="p-4">Valid Until</th>
@@ -173,13 +213,18 @@ export default function Dashboard() {
                 {licenses.map(lic => (
                   <tr key={lic._id} className="border-b border-gray-700 hover:bg-gray-750">
                     <td className="p-4 font-mono text-yellow-400">{lic.key}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${lic.tool_id === 1 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
+                        {lic.tool_id === 1 ? 'Veo 3' : 'Sora'}
+                      </span>
+                    </td>
                     <td className="p-4 text-gray-300">{lic.description}</td>
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded text-xs ${lic.devices.length >= lic.max_devices ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
                         {lic.devices.length} / {lic.max_devices}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-400">{new Date(lic.valid_until).toLocaleDateString()}</td>
+                    <td className="p-4 text-gray-400">{new Date(lic.valid_until).getFullYear() === 2099 ? 'Forever' : new Date(lic.valid_until).toLocaleDateString()}</td>
                     <td className="p-4 text-right flex justify-end gap-2">
                       <button onClick={() => resetDevices(lic._id)} title="Reset Devices" className="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white p-2 rounded transition">
                         <FaDesktop />

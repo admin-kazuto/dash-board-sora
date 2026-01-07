@@ -7,6 +7,7 @@ export interface ILicense extends Document {
     devices: string[];
     valid_until: Date;
     is_active: boolean;
+    tool_id: number; // 1: Veo, 2: Sora
     created_at: Date;
 }
 
@@ -17,6 +18,7 @@ const LicenseSchema: Schema = new Schema({
     devices: { type: [String], default: [] },
     valid_until: { type: Date, required: true },
     is_active: { type: Boolean, default: true },
+    tool_id: { type: Number, required: true, default: 2 },
     created_at: { type: Date, default: Date.now },
 });
 
