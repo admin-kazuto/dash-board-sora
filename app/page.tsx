@@ -6,13 +6,15 @@ import { useRouter } from 'next/navigation';
 import { FaKey, FaVideo, FaCheckCircle, FaTrash, FaRedo, FaPlus, FaDesktop, FaBan, FaToggleOn, FaToggleOff, FaFilter } from 'react-icons/fa';
 
 // === TOOL REGISTRY (Must match server-side TOOL_MAP) ===
-const TOOL_CONFIG: Record<number, { name: string; prefix: string; color: string; borderColor: string }> = {
-  1: { name: 'Text-to-Video', prefix: 'T2V', color: 'bg-emerald-500/20 text-emerald-400', borderColor: 'border-emerald-500/30' },
-  2: { name: 'Text-to-Image', prefix: 'T2I', color: 'bg-pink-500/20 text-pink-400', borderColor: 'border-pink-500/30' },
-  3: { name: 'Image-to-Video', prefix: 'I2V', color: 'bg-cyan-500/20 text-cyan-400', borderColor: 'border-cyan-500/30' },
-  4: { name: 'Start-End', prefix: 'SE', color: 'bg-amber-500/20 text-amber-400', borderColor: 'border-amber-500/30' },
-  5: { name: 'Character Sync', prefix: 'SYNC', color: 'bg-rose-500/20 text-rose-400', borderColor: 'border-rose-500/30' },
+const TOOL_CONFIG: Record<number, { name: string; prefix: string; color: string; borderColor: string; bg: string }> = {
+  1: { name: 'Text-to-Video', prefix: 'T2V', color: 'bg-emerald-500/20 text-emerald-400', borderColor: 'border-emerald-500/30', bg: 'bg-emerald-600' },
+  2: { name: 'Text-to-Image', prefix: 'T2I', color: 'bg-pink-500/20 text-pink-400', borderColor: 'border-pink-500/30', bg: 'bg-pink-600' },
+  3: { name: 'Image-to-Video', prefix: 'I2V', color: 'bg-cyan-500/20 text-cyan-400', borderColor: 'border-cyan-500/30', bg: 'bg-cyan-600' },
+  4: { name: 'Start-End', prefix: 'SE', color: 'bg-amber-500/20 text-amber-400', borderColor: 'border-amber-500/30', bg: 'bg-amber-600' },
+  5: { name: 'Character Sync', prefix: 'SYNC', color: 'bg-rose-500/20 text-rose-400', borderColor: 'border-rose-500/30', bg: 'bg-rose-600' },
 };
+
+const ALL_TOOL_IDS = Object.keys(TOOL_CONFIG).map(Number);
 
 interface License {
   _id: string;
@@ -22,7 +24,8 @@ interface License {
   devices: string[];
   valid_until: string;
   is_active: boolean;
-  tool_id: number;
+  tools: number[];      // Array of allowed tool IDs
+  tool_id?: number;     // Legacy field (backward compat)
 }
 
 interface Stats {
@@ -41,11 +44,23 @@ export default function Dashboard() {
   const [newKey, setNewKey] = useState('');
   const [description, setDescription] = useState('');
   const [maxDevices, setMaxDevices] = useState(1);
-  const [toolId, setToolId] = useState(1); // Default: Text-to-Video
+  const [selectedTools, setSelectedTools] = useState<number[]>([1, 2, 3, 4, 5]); // Default: all
   const [expirationType, setExpirationType] = useState('1m');
   const [customDate, setCustomDate] = useState('');
   const [filterTool, setFilterTool] = useState(0); // 0 = All
   const router = useRouter();
+
+  // Helper: normalize license data (handle legacy tool_id → tools)
+  const normalizeLicense = (lic: any): License => {
+    if (lic.tools && Array.isArray(lic.tools) && lic.tools.length > 0) {
+      return lic;
+    }
+    // Legacy: convert tool_id to tools array
+    if (lic.tool_id) {
+      return { ...lic, tools: [lic.tool_id] };
+    }
+    return { ...lic, tools: [1, 2, 3, 4, 5] }; // Fallback: all tools
+  };
 
   const fetchData = async () => {
     try {
@@ -53,7 +68,9 @@ export default function Dashboard() {
       const licensesRes = await axios.get('/api/licenses');
 
       if (statsRes.data.success) setStats(statsRes.data.stats);
-      if (licensesRes.data.success) setLicenses(licensesRes.data.licenses);
+      if (licensesRes.data.success) {
+        setLicenses(licensesRes.data.licenses.map(normalizeLicense));
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -62,7 +79,6 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Simple Auth Check
     const checkAuth = () => {
       const hasToken = document.cookie.includes('auth_token=');
       if (!hasToken) {
@@ -74,14 +90,35 @@ export default function Dashboard() {
     checkAuth();
   }, [router]);
 
+  const toggleTool = (toolId: number) => {
+    setSelectedTools(prev =>
+      prev.includes(toolId)
+        ? prev.filter(t => t !== toolId)
+        : [...prev, toolId].sort()
+    );
+  };
+
+  const selectAllTools = () => setSelectedTools([...ALL_TOOL_IDS]);
+  const clearAllTools = () => setSelectedTools([]);
+
   const generateKey = () => {
-    const cfg = TOOL_CONFIG[toolId];
-    const prefix = cfg ? cfg.prefix + '-' : 'KEY-';
-    const key = prefix + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    // Use prefix of first selected tool, or 'ALL' if all selected
+    let prefix = 'ALL';
+    if (selectedTools.length === 1) {
+      const cfg = TOOL_CONFIG[selectedTools[0]];
+      prefix = cfg ? cfg.prefix : 'KEY';
+    } else if (selectedTools.length > 0 && selectedTools.length < ALL_TOOL_IDS.length) {
+      prefix = selectedTools.map(id => TOOL_CONFIG[id]?.prefix || '').join('+');
+    }
+    const key = prefix + '-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
     setNewKey(key);
   };
 
   const createLicense = async () => {
+    if (selectedTools.length === 0) {
+      alert('Phải chọn ít nhất 1 tool!');
+      return;
+    }
     try {
       let validUntil = new Date();
       if (expirationType === 'custom' && customDate) {
@@ -96,7 +133,7 @@ export default function Dashboard() {
         key: newKey,
         description,
         max_devices: maxDevices,
-        tool_id: toolId,
+        tools: selectedTools,
         valid_until: validUntil
       });
 
@@ -182,6 +219,11 @@ export default function Dashboard() {
     router.push('/login');
   };
 
+  // Filter logic: show license if it has the filterTool in its tools array
+  const filteredLicenses = filterTool === 0
+    ? licenses
+    : licenses.filter(l => (l.tools || []).includes(filterTool));
+
   if (loading) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>;
 
   return (
@@ -212,19 +254,41 @@ export default function Dashboard() {
 
           {/* Create Form */}
           <div className="bg-gray-700/50 p-6 rounded-lg mb-8 space-y-4 border border-gray-600">
-            <div className="flex gap-4 flex-wrap items-end">
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-sm text-gray-400 block mb-1">Tool Type</label>
-                <select
-                  value={toolId}
-                  onChange={(e) => setToolId(parseInt(e.target.value))}
-                  className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm outline-none focus:border-purple-500"
-                >
-                  {Object.entries(TOOL_CONFIG).map(([id, cfg]) => (
-                    <option key={id} value={id}>{cfg.name}</option>
-                  ))}
-                </select>
+            {/* Row 1: Tools Selection */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm text-gray-400">Tools Included</label>
+                <div className="flex gap-2">
+                  <button onClick={selectAllTools} className="text-[10px] px-2 py-0.5 rounded bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white transition border border-purple-600/30">
+                    All
+                  </button>
+                  <button onClick={clearAllTools} className="text-[10px] px-2 py-0.5 rounded bg-gray-600/20 text-gray-400 hover:bg-gray-600 hover:text-white transition border border-gray-600/30">
+                    None
+                  </button>
+                </div>
               </div>
+              <div className="flex gap-2 flex-wrap">
+                {Object.entries(TOOL_CONFIG).map(([id, cfg]) => {
+                  const toolId = parseInt(id);
+                  const isSelected = selectedTools.includes(toolId);
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => toggleTool(toolId)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${isSelected
+                          ? `${cfg.bg} text-white border-transparent shadow-lg`
+                          : `bg-gray-900 text-gray-500 border-gray-700 hover:border-gray-500`
+                        }`}
+                    >
+                      {isSelected ? '✓ ' : ''}{cfg.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Row 2: Key + Description */}
+            <div className="flex gap-4 flex-wrap items-end">
               <div className="flex-1 min-w-[200px]">
                 <label className="text-sm text-gray-400 block mb-1">License Key</label>
                 <div className="flex gap-2">
@@ -232,7 +296,7 @@ export default function Dashboard() {
                     type="text"
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
-                    placeholder="Key..."
+                    placeholder="Click generate →"
                     className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full font-mono text-sm text-yellow-400"
                   />
                   <button onClick={generateKey} className="bg-gray-600 px-3 rounded hover:bg-gray-500 transition"><FaRedo /></button>
@@ -250,6 +314,7 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Row 3: Expiration + Devices + Create */}
             <div className="flex gap-4 flex-wrap items-end">
               <div className="flex-1 min-w-[150px]">
                 <label className="text-sm text-gray-400 block mb-1">Expiration</label>
@@ -305,9 +370,7 @@ export default function Dashboard() {
               ))}
             </select>
             <span className="text-xs text-gray-500 ml-2">
-              {filterTool === 0
-                ? `${licenses.length} licenses`
-                : `${licenses.filter(l => l.tool_id === filterTool).length} / ${licenses.length} licenses`}
+              {filteredLicenses.length} / {licenses.length} licenses
             </span>
           </div>
 
@@ -318,7 +381,7 @@ export default function Dashboard() {
                 <tr className="bg-gray-700/50 text-gray-300 text-sm uppercase">
                   <th className="p-4 rounded-tl-lg">Key</th>
                   <th className="p-4 text-center">Status</th>
-                  <th className="p-4">Tool</th>
+                  <th className="p-4">Tools</th>
                   <th className="p-4">Description</th>
                   <th className="p-4">Devices (IDs)</th>
                   <th className="p-4">Valid Until</th>
@@ -326,9 +389,10 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {licenses.filter(l => filterTool === 0 || l.tool_id === filterTool).map(lic => {
+                {filteredLicenses.map(lic => {
                   const isExpired = new Date() > new Date(lic.valid_until);
                   const isRowDisabled = !lic.is_active || isExpired;
+                  const licTools = lic.tools || [];
 
                   return (
                     <tr key={lic._id} className={`border-b border-gray-700 hover:bg-gray-750/50 transition ${isRowDisabled ? 'opacity-70 grayscale-[0.5]' : ''}`}>
@@ -352,15 +416,23 @@ export default function Dashboard() {
                         )}
                       </td>
                       <td className="p-4">
-                        {(() => {
-                          const cfg = TOOL_CONFIG[lic.tool_id];
-                          if (!cfg) return <span className="text-gray-500 text-xs">Unknown</span>;
-                          return (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${cfg.color} ${cfg.borderColor}`}>
-                              {cfg.name}
+                        <div className="flex flex-wrap gap-1">
+                          {licTools.length === ALL_TOOL_IDS.length ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border bg-purple-500/20 text-purple-400 border-purple-500/30">
+                              ALL TOOLS
                             </span>
-                          );
-                        })()}
+                          ) : (
+                            licTools.map(tid => {
+                              const cfg = TOOL_CONFIG[tid];
+                              if (!cfg) return null;
+                              return (
+                                <span key={tid} className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${cfg.color} ${cfg.borderColor}`}>
+                                  {cfg.prefix}
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-gray-300">{lic.description}</td>
                       <td className="p-4">
@@ -415,7 +487,7 @@ export default function Dashboard() {
                     </tr>
                   );
                 })}
-                {licenses.length === 0 && (
+                {filteredLicenses.length === 0 && (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-gray-500 italic">No licenses found in database</td>
                   </tr>

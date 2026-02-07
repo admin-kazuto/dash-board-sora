@@ -3,7 +3,6 @@ import dbConnect from '@/lib/db';
 import License from '@/models/License';
 
 // === TOOL REGISTRY ===
-// 5 tools tách từ Veo 3 - update here when adding new tools
 const TOOL_MAP: Record<number, string> = {
     1: 'Text-to-Video',
     2: 'Text-to-Image',
@@ -65,10 +64,15 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, status: 'invalid', detail: 'License expired' });
         }
 
-        // Tool ID check - dynamic lookup from TOOL_MAP
-        if (tool_id && license.tool_id !== tool_id) {
-            const toolName = TOOL_MAP[license.tool_id] || `Tool #${license.tool_id}`;
-            return NextResponse.json({ success: false, status: 'invalid', detail: `This key is for ${toolName} only` });
+        // Tool check - verify tool_id exists in license.tools array
+        if (tool_id && !license.tools.includes(tool_id)) {
+            const allowedNames = license.tools.map((t: number) => TOOL_MAP[t] || `#${t}`).join(', ');
+            const requestedName = TOOL_MAP[tool_id] || `Tool #${tool_id}`;
+            return NextResponse.json({
+                success: false,
+                status: 'invalid',
+                detail: `${requestedName} is not included in this license. Allowed: ${allowedNames}`
+            });
         }
 
         // Device check and registration
@@ -78,7 +82,6 @@ export async function POST(req: Request) {
                 return NextResponse.json({ success: false, status: 'invalid', detail: 'Max devices reached' });
             }
 
-            // Atomic update to ensure it saves in serverless environment
             await License.updateOne(
                 { _id: license._id },
                 { $addToSet: { devices: devId } }

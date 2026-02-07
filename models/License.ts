@@ -7,7 +7,7 @@ export interface ILicense extends Document {
     devices: string[];
     valid_until: Date;
     is_active: boolean;
-    tool_id: number; // 1:T2V, 2:T2I, 3:I2V, 4:Start-End, 5:CharSync
+    tools: number[]; // Array of tool IDs: 1=T2V, 2=T2I, 3=I2V, 4=Start-End, 5=CharSync
     created_at: Date;
 }
 
@@ -18,7 +18,7 @@ const LicenseSchema: Schema = new Schema({
     devices: { type: [String], default: [] },
     valid_until: { type: Date, required: true },
     is_active: { type: Boolean, default: true },
-    tool_id: { type: Number, required: true, default: 2 },
+    tools: { type: [Number], required: true, default: [1, 2, 3, 4, 5] }, // Default: all tools
     created_at: { type: Date, default: Date.now },
 });
 

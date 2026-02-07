@@ -19,9 +19,9 @@ export async function POST(req: Request) {
         await dbConnect();
         const body = await req.json();
 
-        // Ensure tool_id is present, default to 2 (Sora)
-        if (!body.tool_id) {
-            body.tool_id = 2;
+        // Ensure tools array is present, default to all 5 tools
+        if (!body.tools || !Array.isArray(body.tools) || body.tools.length === 0) {
+            body.tools = [1, 2, 3, 4, 5];
         }
 
         // Default valid for 30 days if not specified
