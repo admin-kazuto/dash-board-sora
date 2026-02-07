@@ -110,7 +110,8 @@ export default function Dashboard() {
     } else if (selectedTools.length > 0 && selectedTools.length < ALL_TOOL_IDS.length) {
       prefix = selectedTools.map(id => TOOL_CONFIG[id]?.prefix || '').join('+');
     }
-    const key = prefix + '-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const seg = () => Math.random().toString(36).substring(2, 10).toUpperCase();
+    const key = prefix + '-' + seg() + '-' + seg() + '-' + seg() + '-' + seg() + '-' + seg();
     setNewKey(key);
   };
 
@@ -276,8 +277,8 @@ export default function Dashboard() {
                       key={id}
                       onClick={() => toggleTool(toolId)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${isSelected
-                          ? `${cfg.bg} text-white border-transparent shadow-lg`
-                          : `bg-gray-900 text-gray-500 border-gray-700 hover:border-gray-500`
+                        ? `${cfg.bg} text-white border-transparent shadow-lg`
+                        : `bg-gray-900 text-gray-500 border-gray-700 hover:border-gray-500`
                         }`}
                     >
                       {isSelected ? '✓ ' : ''}{cfg.name}

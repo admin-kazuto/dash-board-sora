@@ -5,7 +5,7 @@ import License from '@/models/License';
 // Seed data demo - hybrid keys
 const SEED_DATA = [
     {
-        key: "ALL-FULL-DEMO-001",
+        key: "ALL-D3M0K3Y1-FULLACCS-PR0MAXVN-T3ST2026-X9K7W2M4",
         description: "Full Access Demo (All 5 tools)",
         max_devices: 3,
         tools: [1, 2, 3, 4, 5],
@@ -13,7 +13,7 @@ const SEED_DATA = [
         is_active: true,
     },
     {
-        key: "T2V-ONLY-DEMO-001",
+        key: "T2V-D3M0K3Y2-VID30NLY-T3STVN26-QW8R5P1J-B6N4H9Y2",
         description: "Text-to-Video Only Demo",
         max_devices: 1,
         tools: [1],
@@ -21,7 +21,7 @@ const SEED_DATA = [
         is_active: true,
     },
     {
-        key: "T2V+T2I-DEMO-001",
+        key: "T2V+T2I-D3M0K3Y3-C0MB0VID-IMGVN2026-M3K7L9X1-F5R2W8Q4",
         description: "Video + Image Combo Demo",
         max_devices: 2,
         tools: [1, 2],
