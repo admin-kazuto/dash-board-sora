@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import License from '@/models/License';
 
+// === TOOL REGISTRY ===
+// 5 tools tách từ Veo 3 - update here when adding new tools
+const TOOL_MAP: Record<number, string> = {
+    1: 'Text-to-Video',
+    2: 'Text-to-Image',
+    3: 'Image-to-Video',
+    4: 'Start-End',
+    5: 'Character Sync',
+};
+
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -55,9 +65,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, status: 'invalid', detail: 'License expired' });
         }
 
-        // Tool ID check (1: Veo, 2: Sora)
+        // Tool ID check - dynamic lookup from TOOL_MAP
         if (tool_id && license.tool_id !== tool_id) {
-            const toolName = license.tool_id === 1 ? "Veo" : "Sora";
+            const toolName = TOOL_MAP[license.tool_id] || `Tool #${license.tool_id}`;
             return NextResponse.json({ success: false, status: 'invalid', detail: `This key is for ${toolName} only` });
         }
 

@@ -7,7 +7,7 @@ export interface ILicense extends Document {
     devices: string[];
     valid_until: Date;
     is_active: boolean;
-    tool_id: number; // 1: Veo, 2: Sora
+    tool_id: number; // 1:T2V, 2:T2I, 3:I2V, 4:Start-End, 5:CharSync
     created_at: Date;
 }
 

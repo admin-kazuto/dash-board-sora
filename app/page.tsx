@@ -3,7 +3,16 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { FaKey, FaVideo, FaCheckCircle, FaTrash, FaRedo, FaPlus, FaDesktop, FaBan, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { FaKey, FaVideo, FaCheckCircle, FaTrash, FaRedo, FaPlus, FaDesktop, FaBan, FaToggleOn, FaToggleOff, FaFilter } from 'react-icons/fa';
+
+// === TOOL REGISTRY (Must match server-side TOOL_MAP) ===
+const TOOL_CONFIG: Record<number, { name: string; prefix: string; color: string; borderColor: string }> = {
+  1: { name: 'Text-to-Video', prefix: 'T2V', color: 'bg-emerald-500/20 text-emerald-400', borderColor: 'border-emerald-500/30' },
+  2: { name: 'Text-to-Image', prefix: 'T2I', color: 'bg-pink-500/20 text-pink-400', borderColor: 'border-pink-500/30' },
+  3: { name: 'Image-to-Video', prefix: 'I2V', color: 'bg-cyan-500/20 text-cyan-400', borderColor: 'border-cyan-500/30' },
+  4: { name: 'Start-End', prefix: 'SE', color: 'bg-amber-500/20 text-amber-400', borderColor: 'border-amber-500/30' },
+  5: { name: 'Character Sync', prefix: 'SYNC', color: 'bg-rose-500/20 text-rose-400', borderColor: 'border-rose-500/30' },
+};
 
 interface License {
   _id: string;
@@ -32,9 +41,10 @@ export default function Dashboard() {
   const [newKey, setNewKey] = useState('');
   const [description, setDescription] = useState('');
   const [maxDevices, setMaxDevices] = useState(1);
-  const [toolId, setToolId] = useState(2); // 1: Veo, 2: Sora
-  const [expirationType, setExpirationType] = useState('1m'); // 1d, 1w, 1m, 1y, forever, custom
+  const [toolId, setToolId] = useState(1); // Default: Text-to-Video
+  const [expirationType, setExpirationType] = useState('1m');
   const [customDate, setCustomDate] = useState('');
+  const [filterTool, setFilterTool] = useState(0); // 0 = All
   const router = useRouter();
 
   const fetchData = async () => {
@@ -65,7 +75,8 @@ export default function Dashboard() {
   }, [router]);
 
   const generateKey = () => {
-    const prefix = toolId === 1 ? 'VEO-' : 'SORA-';
+    const cfg = TOOL_CONFIG[toolId];
+    const prefix = cfg ? cfg.prefix + '-' : 'KEY-';
     const key = prefix + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
     setNewKey(key);
   };
@@ -209,8 +220,9 @@ export default function Dashboard() {
                   onChange={(e) => setToolId(parseInt(e.target.value))}
                   className="bg-gray-900 border border-gray-600 rounded px-3 py-2 w-full text-sm outline-none focus:border-purple-500"
                 >
-                  <option value={1}>Veo 3</option>
-                  <option value={2}>Sora Multi Cookie</option>
+                  {Object.entries(TOOL_CONFIG).map(([id, cfg]) => (
+                    <option key={id} value={id}>{cfg.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex-1 min-w-[200px]">
@@ -278,6 +290,27 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Filter Bar */}
+          <div className="flex items-center gap-3 mb-4">
+            <FaFilter className="text-gray-500" />
+            <span className="text-sm text-gray-400">Filter by Tool:</span>
+            <select
+              value={filterTool}
+              onChange={(e) => setFilterTool(parseInt(e.target.value))}
+              className="bg-gray-900 border border-gray-600 rounded px-3 py-1.5 text-sm outline-none focus:border-purple-500"
+            >
+              <option value={0}>All Tools</option>
+              {Object.entries(TOOL_CONFIG).map(([id, cfg]) => (
+                <option key={id} value={id}>{cfg.name}</option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-500 ml-2">
+              {filterTool === 0
+                ? `${licenses.length} licenses`
+                : `${licenses.filter(l => l.tool_id === filterTool).length} / ${licenses.length} licenses`}
+            </span>
+          </div>
+
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -293,7 +326,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {licenses.map(lic => {
+                {licenses.filter(l => filterTool === 0 || l.tool_id === filterTool).map(lic => {
                   const isExpired = new Date() > new Date(lic.valid_until);
                   const isRowDisabled = !lic.is_active || isExpired;
 
@@ -319,9 +352,15 @@ export default function Dashboard() {
                         )}
                       </td>
                       <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${lic.tool_id === 1 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
-                          {lic.tool_id === 1 ? 'Veo 3' : 'Sora'}
-                        </span>
+                        {(() => {
+                          const cfg = TOOL_CONFIG[lic.tool_id];
+                          if (!cfg) return <span className="text-gray-500 text-xs">Unknown</span>;
+                          return (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${cfg.color} ${cfg.borderColor}`}>
+                              {cfg.name}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="p-4 text-gray-300">{lic.description}</td>
                       <td className="p-4">
