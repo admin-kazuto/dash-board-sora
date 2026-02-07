@@ -13,6 +13,17 @@ export async function GET() {
     }
 }
 
+// DELETE: Remove all licenses (reset database)
+export async function DELETE() {
+    try {
+        await dbConnect();
+        const result = await License.deleteMany({});
+        return NextResponse.json({ success: true, deleted: result.deletedCount });
+    } catch (error: any) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+}
+
 // POST: Create new license
 export async function POST(req: Request) {
     try {
