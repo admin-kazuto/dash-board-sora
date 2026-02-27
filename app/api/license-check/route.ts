@@ -9,6 +9,7 @@ const TOOL_MAP: Record<number, string> = {
     3: 'Image-to-Video',
     4: 'Start-End',
     5: 'Character Sync',
+    6: 'TTS Studio',
 };
 
 export const dynamic = 'force-dynamic';

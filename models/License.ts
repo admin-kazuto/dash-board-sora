@@ -18,7 +18,7 @@ const LicenseSchema: Schema = new Schema({
     devices: { type: [String], default: [] },
     valid_until: { type: Date, required: true },
     is_active: { type: Boolean, default: true },
-    tools: { type: [Number], required: true, default: [1, 2, 3, 4, 5] }, // Default: all tools
+    tools: { type: [Number], required: true, default: [1, 2, 3, 4, 5, 6] }, // Default: all tools
     created_at: { type: Date, default: Date.now },
 });
 

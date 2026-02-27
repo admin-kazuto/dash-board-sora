@@ -12,6 +12,7 @@ const TOOL_CONFIG: Record<number, { name: string; prefix: string; color: string;
   3: { name: 'Image-to-Video', prefix: 'I2V', color: 'bg-cyan-500/20 text-cyan-400', borderColor: 'border-cyan-500/30', bg: 'bg-cyan-600' },
   4: { name: 'Start-End', prefix: 'SE', color: 'bg-amber-500/20 text-amber-400', borderColor: 'border-amber-500/30', bg: 'bg-amber-600' },
   5: { name: 'Character Sync', prefix: 'SYNC', color: 'bg-rose-500/20 text-rose-400', borderColor: 'border-rose-500/30', bg: 'bg-rose-600' },
+  6: { name: 'TTS Studio', prefix: 'TTS', color: 'bg-violet-500/20 text-violet-400', borderColor: 'border-violet-500/30', bg: 'bg-violet-600' },
 };
 
 const ALL_TOOL_IDS = Object.keys(TOOL_CONFIG).map(Number);
@@ -44,7 +45,7 @@ export default function Dashboard() {
   const [newKey, setNewKey] = useState('');
   const [description, setDescription] = useState('');
   const [maxDevices, setMaxDevices] = useState(1);
-  const [selectedTools, setSelectedTools] = useState<number[]>([1, 2, 3, 4, 5]); // Default: all
+  const [selectedTools, setSelectedTools] = useState<number[]>([1, 2, 3, 4, 5, 6]); // Default: all
   const [expirationType, setExpirationType] = useState('1m');
   const [customDate, setCustomDate] = useState('');
   const [filterTool, setFilterTool] = useState(0); // 0 = All
@@ -59,7 +60,7 @@ export default function Dashboard() {
     if (lic.tool_id) {
       return { ...lic, tools: [lic.tool_id] };
     }
-    return { ...lic, tools: [1, 2, 3, 4, 5] }; // Fallback: all tools
+    return { ...lic, tools: [1, 2, 3, 4, 5, 6] }; // Fallback: all tools
   };
 
   const fetchData = async () => {
